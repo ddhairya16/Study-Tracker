@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { format, subDays, addDays } from 'date-fns';
+import { formatDateLong } from '../../lib/dateFormat';
+import { useStore } from '../../store/useStore';
 
-export default function Heatmap({ data, days = 365 }) {
+export default function Heatmap({ data, days = 84 }) {
+  const { settings } = useStore();
   const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '', isRightEdge: false });
 
   const today = new Date();
@@ -34,7 +37,7 @@ export default function Heatmap({ data, days = 365 }) {
   });
 
   const getTooltipText = (minutes, cellDate) => {
-    const dateFmt = format(cellDate, 'EEEE, MMM d');
+    const dateFmt = formatDateLong(cellDate, settings?.dateFormat);
     if (minutes === 0) return `No activity on ${dateFmt}`;
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
@@ -70,10 +73,11 @@ export default function Heatmap({ data, days = 365 }) {
       
       <div className="heatmap-grid-wrapper">
         <div className="heatmap-grid">
-          {cells.map((cell) => (
+          {cells.map((cell, index) => (
             <div
               key={cell.id}
               className={`heatmap-cell level-${cell.level} ${cell.isPadding ? 'padding' : ''} ${cell.isTodayFlag ? 'today' : ''}`}
+              style={{ animationDelay: `${index * 2}ms` }}
               onMouseEnter={(e) => handleMouseEnter(e, cell)}
             />
           ))}
@@ -137,6 +141,12 @@ export default function Heatmap({ data, days = 365 }) {
           height: 10px;
           border-radius: 2px;
           transition: transform 100ms var(--ease-standard);
+          animation: cellFadeIn 0.5s var(--ease-spring) backwards;
+        }
+
+        @keyframes cellFadeIn {
+          from { opacity: 0; transform: scale(0.5); }
+          to { opacity: 1; transform: scale(1); }
         }
 
         .heatmap-cell:not(.padding):hover {

@@ -2,10 +2,32 @@ import React from 'react';
 import { useStore } from '../../store/useStore';
 import { format, isToday, isFuture, differenceInCalendarDays } from 'date-fns';
 import StatCard from './StatCard';
+import { formatDateShort, formatDateLong } from '../../lib/dateFormat';
 import TaskCard from './TaskCard';
 import { CheckSquare, Clock, Activity, Flame, Pencil, Plus, Minus, FileText, FileBox } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import EventPanel from '../Calendar/EventPanel';
+
+function getGreeting(name) {
+  const hour = new Date().getHours(); // 0-23
+  
+  let timeOfDay;
+  if (hour >= 4 && hour < 12) {
+    timeOfDay = 'morning';   // 4:00 AM – 11:59 AM
+  } else if (hour >= 12 && hour < 18) {
+    timeOfDay = 'afternoon'; // 12:00 PM – 5:59 PM
+  } else {
+    timeOfDay = 'evening';   // 6:00 PM – 3:59 AM
+  }
+  
+  const greetings = {
+    morning:   `Good morning, ${name} 👋`,
+    afternoon: `Good afternoon, ${name} ☀️`,
+    evening:   `Good evening, ${name} 🌙`,
+  };
+  
+  return greetings[timeOfDay];
+}
 
 export default function Dashboard({ setCurrentView }) {
   const { events, sessions, profile, settings, updateSettings, recentItems, setActivePdfId } = useStore();
@@ -14,7 +36,7 @@ export default function Dashboard({ setCurrentView }) {
   const [isEventPanelOpen, setIsEventPanelOpen] = React.useState(false);
   
   const today = new Date();
-  const dateString = format(today, 'EEEE, MMMM d');
+  const dateString = formatDateLong(today, settings?.dateFormat);
 
   const todayEvents = events.filter(e => isToday(new Date(e.start)));
   const upcomingEvents = events
@@ -121,10 +143,10 @@ export default function Dashboard({ setCurrentView }) {
   const lastPdf = recentItems?.find(item => item.type === 'pdf');
 
   return (
-    <div className="dashboard-view">
+    <div className="dashboard-view view-container">
       <header className="dashboard-header">
-        <h1>Good morning, {profile?.name || 'Student'} 👋</h1>
-        <p className="date-subtitle">{dateString}</p>
+        <h1 className="text-xl">{getGreeting(profile?.name || 'Student')}</h1>
+        <p className="date-subtitle text-sm text-muted">{dateString}</p>
       </header>
 
       <LayoutGroup>
@@ -155,8 +177,8 @@ export default function Dashboard({ setCurrentView }) {
                   <button onClick={() => adjustGoal(0.5)} className="icon-btn"><Plus size={14}/></button>
                 </div>
                 <div className="goal-editor-actions">
-                  <button className="primary-btn sm" onClick={handleSaveGoal}>Set Goal</button>
-                  <button className="cancel-btn sm" onClick={() => setIsEditingGoal(false)}>Cancel</button>
+                  <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="btn-primary" onClick={handleSaveGoal}>Set Goal</motion.button>
+                  <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="btn-ghost" onClick={() => setIsEditingGoal(false)}>Cancel</motion.button>
                 </div>
               </motion.div>
             )}
@@ -191,21 +213,21 @@ export default function Dashboard({ setCurrentView }) {
       <div className="dashboard-content">
         <div className="main-column">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h2>Today's Tasks</h2>
+            <h2 className="text-lg">Today's Tasks</h2>
             <button 
-              className="icon-btn" 
               onClick={() => setIsEventPanelOpen(true)}
-              style={{ background: 'var(--bg-hover)', borderRadius: '50%', padding: '4px' }}
-              title="Add Task"
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <Plus size={16} />
+              <Plus size={14} />
+              Add Task
             </button>
           </div>
           {todayEvents.length === 0 ? (
-            <div className="empty-state glass">
-              <div className="empty-icon">☕</div>
-              <h3>No tasks scheduled for today</h3>
-              <p>Take a break, or head to the Calendar to plan your day.</p>
+            <div className="empty-state">
+              <CheckSquare size={40} style={{ opacity: 0.2 }} />
+              <h3 className="text-md">No tasks scheduled for today</h3>
+              <p className="text-sm text-muted">Take a break, or head to the Calendar to plan your day.</p>
             </div>
           ) : (
             <div className="tasks-container">
@@ -219,7 +241,7 @@ export default function Dashboard({ setCurrentView }) {
         <div className="side-column">
           {upcomingExams.length > 0 && (
             <>
-              <h2>Upcoming Exams</h2>
+              <h2 className="text-lg">Upcoming Exams</h2>
               <div className="upcoming-exams-list glass">
                 {upcomingExams.map(exam => {
                   const maxDays = (exam.examVisibilityMonths || 1) * 30;
@@ -246,14 +268,14 @@ export default function Dashboard({ setCurrentView }) {
             </>
           )}
 
-          <h2>Upcoming</h2>
+          <h2 className="text-lg">Upcoming</h2>
           <div className="upcoming-list glass">
             {upcomingEvents.length === 0 ? (
               <p className="empty-text">No upcoming events.</p>
             ) : (
               upcomingEvents.map(e => (
                 <div key={e.id} className="upcoming-item">
-                  <div className="upcoming-date">{format(new Date(e.start), 'MMM d')}</div>
+                  <div className="upcoming-date">{formatDateShort(e.start, settings?.dateFormat)}</div>
                   <div className="upcoming-details">
                     <div className="upcoming-title">{e.title}</div>
                     <div className="upcoming-time">{format(new Date(e.start), 'HH:mm')}</div>
@@ -271,20 +293,15 @@ export default function Dashboard({ setCurrentView }) {
             if (setCurrentView) setCurrentView('library');
             setActivePdfId(lastPdf.id);
           }}
+          className="card"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 12,
             padding: '12px 16px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 12,
             cursor: 'pointer',
-            transition: 'background 200ms',
             marginTop: 16
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-panel)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card)'}
         >
           <span style={{ fontSize: 20 }}>📄</span>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -504,28 +521,6 @@ export default function Dashboard({ setCurrentView }) {
           display: flex;
           flex-direction: column;
           gap: 8px;
-        }
-
-        .empty-state {
-          padding: 40px;
-          border-radius: 16px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          gap: 8px;
-        }
-        .empty-icon {
-          font-size: 48px;
-          margin-bottom: 8px;
-        }
-        .empty-state h3 {
-          font-size: 18px;
-          font-weight: 600;
-        }
-        .empty-state p {
-          color: var(--text-muted);
-          font-size: 14px;
         }
 
         .upcoming-list {

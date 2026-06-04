@@ -117,6 +117,46 @@ export const useStore = create(
       sessions: [],
       addSession: (session) => set((state) => ({ sessions: [...state.sessions, session] })),
 
+      // --- Timer Session Slice ---
+      timerSession: {
+        isRunning: false,
+        mode: 'Pomodoro', // 'Pomodoro' | 'Countdown' | 'Stopwatch'
+        timeLeft: 25 * 60, // seconds
+        totalDuration: 25 * 60,
+        sessionType: 'focus', // 'focus' | 'shortBreak' | 'longBreak'
+        pomodoroCount: 0,
+        subjectId: '',
+        topicId: '',
+        lastTickAt: 0,
+        loggedStopwatchMs: 0
+      },
+      setTimerSession: (data) => set(state => ({
+        timerSession: { ...state.timerSession, ...data }
+      })),
+      tickTimer: () => set(state => {
+        const now = Date.now();
+        const elapsed = Math.floor((now - state.timerSession.lastTickAt) / 1000);
+        const newTimeLeft = Math.max(0, state.timerSession.timeLeft - elapsed);
+        return {
+          timerSession: {
+            ...state.timerSession,
+            timeLeft: newTimeLeft,
+            lastTickAt: now,
+          }
+        };
+      }),
+      tickStopwatch: () => set(state => {
+        const now = Date.now();
+        const elapsed = now - state.timerSession.lastTickAt;
+        return {
+          timerSession: {
+            ...state.timerSession,
+            timeLeft: state.timerSession.timeLeft + elapsed,
+            lastTickAt: now,
+          }
+        };
+      }),
+
       // --- Profile Slice ---
       profile: { name: 'Student', goal: '', hasCompletedOnboarding: false },
       updateProfile: (data) => set((state) => ({ profile: { ...state.profile, ...data } })),
@@ -181,6 +221,19 @@ export const useStore = create(
         pdfFiles: { ...state.pdfFiles, [id]: file }
       })),
 
+      // --- Whiteboards Slice ---
+      whiteboards: [],
+      activeWhiteboardId: null,
+      setActiveWhiteboardId: (id) => set({ activeWhiteboardId: id }),
+      addWhiteboard: (whiteboard) => set((state) => ({ whiteboards: [...state.whiteboards, whiteboard] })),
+      updateWhiteboard: (id, data) => set((state) => ({
+        whiteboards: state.whiteboards.map(w => w.id === id ? { ...w, ...data, updatedAt: new Date().toISOString() } : w)
+      })),
+      deleteWhiteboard: (id) => set((state) => ({
+        whiteboards: state.whiteboards.filter(w => w.id !== id),
+        activeWhiteboardId: state.activeWhiteboardId === id ? null : state.activeWhiteboardId
+      })),
+
       // --- Global Actions ---
       clearData: () => set(() => ({
         subjects: initialSubjects,
@@ -190,7 +243,8 @@ export const useStore = create(
         settings: { focusDuration: 25, shortBreakDuration: 5, longBreakDuration: 15, themeAccent: '#e8f4ff', theme: 'dark', dailyGoalMinutes: 120 },
         notes: [],
         noteFolders: [],
-        pdfs: []
+        pdfs: [],
+        whiteboards: []
       }))
     }),
     {
@@ -204,7 +258,9 @@ export const useStore = create(
         recentItems: state.recentItems,
         notes: state.notes,
         noteFolders: state.noteFolders,
-        pdfs: state.pdfs
+        pdfs: state.pdfs,
+        whiteboards: state.whiteboards,
+        timerSession: state.timerSession
       })
     }
   )

@@ -7,7 +7,9 @@ import { useStore } from '../../store/useStore';
 
 export default function SubjectCard({ subject }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: subject.id });
-  const { updateSubject, deleteSubject, addTopic, updateTopic, deleteTopic } = useStore();
+  const { updateSubject, deleteSubject, addTopic, updateTopic, deleteTopic, events } = useStore();
+  
+  const totalTopicsCount = subject.topics.length;
   
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [newTopicName, setNewTopicName] = useState('');
@@ -40,7 +42,7 @@ export default function SubjectCard({ subject }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="subject-card glass">
+    <div ref={setNodeRef} style={style} className="subject-card card glass">
       <div className="subject-header">
         <div className="drag-handle" {...attributes} {...listeners}>
           <GripVertical size={18} />
@@ -69,6 +71,8 @@ export default function SubjectCard({ subject }) {
             </h3>
           )}
         </div>
+
+
         
         <div className="subject-actions">
           <button className="icon-btn danger" onClick={() => {

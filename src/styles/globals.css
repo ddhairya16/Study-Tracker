@@ -92,20 +92,116 @@ body {
 }
 
 /* Custom Scrollbar */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-disabled);
-  border-radius: 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: rgba(255,255,255,0.2);
 }
+
+/* Focus Rings */
+*:focus-visible {
+  outline: 2px solid var(--accent-vivid);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Typography Scale */
+.text-xl  { font-size: 20px; font-weight: 600; }
+.text-lg  { font-size: 16px; font-weight: 600; }
+.text-md  { font-size: 14px; font-weight: 500; }
+.text-sm  { font-size: 13px; font-weight: 400; }
+.text-xs  { font-size: 11px; font-weight: 400; }
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--accent-vivid); }
+
+/* Spacing Consistency */
+.view-container {
+  padding: 32px 40px;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Global input styling */
+input, select, textarea {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 150ms;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-vivid);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+select option {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+/* Consistent button hierarchy */
+.btn-primary {
+  background: var(--accent-vivid);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms, transform 150ms;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.12); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
 
 .pdf-canvas {
   pointer-events: none;
@@ -142,4 +238,83 @@ body {
 
 .page-wrapper.drawing-mode .text-layer {
   pointer-events: none;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  transition: transform 200ms cubic-bezier(0.16,1,0.3,1), box-shadow 200ms cubic-bezier(0.16,1,0.3,1), background 150ms;
+}
+.card:hover {
+  background: rgba(255,255,255,0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+/* Standardized Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 40px;
+  height: 100%;
+}
+.empty-state svg {
+  margin-bottom: 8px;
+}
+
+/* Target Excalidraw internal range inputs */
+.excalidraw input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  outline: none;
+  cursor: pointer;
+}
+
+.excalidraw input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-vivid, #00d4ff);
+  cursor: pointer;
+  border: 2px solid rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: transform 150ms;
+}
+
+.excalidraw input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.excalidraw input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-vivid, #00d4ff);
+  cursor: pointer;
+  border: 2px solid rgba(0,0,0,0.3);
+}
+
+.excalidraw .Island {
+  min-width: 200px !important;
+}
+
+.excalidraw .buttonList {
+  gap: 6px !important;
+}
+
+/* Fix Excalidraw cursor offset */
+.excalidraw canvas {
+  cursor: default;
 }

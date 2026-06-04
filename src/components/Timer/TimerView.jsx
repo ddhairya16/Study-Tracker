@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Play, Pause, RotateCcw, Edit2, Zap, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store/useStore';
 import ProgressRing from './ProgressRing';
 import ErrorBoundary from './ErrorBoundary';
@@ -15,25 +16,15 @@ const MODES = {
 };
 
 export default function TimerView() {
-  const { subjects, addSession, settings, pdfs, updatePdf } = useStore();
+  const { subjects, settings, pdfs, updatePdf, timerSession, setTimerSession, addSession } = useStore();
   
-  const [mode, setMode] = useState(MODES.POMODORO);
-  const [subjectId, setSubjectId] = useState('');
-  const [topicId, setTopicId] = useState('');
-  
-  const [timeLeft, setTimeLeft] = useState(settings.focusDuration * 60);
-  const [initialTime, setInitialTime] = useState(settings.focusDuration * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [pomodoroState, setPomodoroState] = useState('focus'); // focus, shortBreak, longBreak
-  const [pomodoroCount, setPomodoroCount] = useState(0);
+  const { 
+    isRunning, mode, timeLeft, totalDuration, sessionType, pomodoroCount, 
+    subjectId, topicId, loggedStopwatchMs 
+  } = timerSession;
 
-  // Stopwatch state
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [loggedStopwatchMs, setLoggedStopwatchMs] = useState(0);
+  const [displayedMode, setDisplayedMode] = useState(mode);
   const [showMs, setShowMs] = useState(false);
-  const startTimeRef = useRef(null);
-
-  // Countdown editing
   const [isEditingCountdown, setIsEditingCountdown] = useState(false);
   const [countdownInput, setCountdownInput] = useState('');
 
@@ -44,153 +35,15 @@ export default function TimerView() {
   const [focusPdfDoc, setFocusPdfDoc] = useState(null);
   const [splitPercent, setSplitPercent] = useState(30);
 
-  const audioCtxRef = useRef(null);
-  const intervalRef = useRef(null);
-
-  const playTempleBell = () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    const ctx = audioCtxRef.current;
-    const now = ctx.currentTime;
-    const fundamental = ctx.createOscillator();
-    const fundamentalGain = ctx.createGain();
-    fundamental.type = 'sine';
-    fundamental.frequency.setValueAtTime(110, now);
-    fundamental.frequency.exponentialRampToValueAtTime(100, now + 0.05);
-    fundamentalGain.gain.setValueAtTime(0, now);
-    fundamentalGain.gain.linearRampToValueAtTime(0.7, now + 0.01);
-    fundamentalGain.gain.exponentialRampToValueAtTime(0.001, now + 6);
-    fundamental.connect(fundamentalGain);
-    fundamentalGain.connect(ctx.destination);
-    fundamental.start(now);
-    fundamental.stop(now + 6);
-
-    const partial2 = ctx.createOscillator();
-    const partial2Gain = ctx.createGain();
-    partial2.type = 'sine';
-    partial2.frequency.setValueAtTime(275, now);
-    partial2Gain.gain.setValueAtTime(0, now);
-    partial2Gain.gain.linearRampToValueAtTime(0.4, now + 0.01);
-    partial2Gain.gain.exponentialRampToValueAtTime(0.001, now + 4);
-    partial2.connect(partial2Gain);
-    partial2Gain.connect(ctx.destination);
-    partial2.start(now);
-    partial2.stop(now + 4);
-
-    const partial3 = ctx.createOscillator();
-    const partial3Gain = ctx.createGain();
-    partial3.type = 'sine';
-    partial3.frequency.setValueAtTime(550, now);
-    partial3Gain.gain.setValueAtTime(0, now);
-    partial3Gain.gain.linearRampToValueAtTime(0.15, now + 0.01);
-    partial3Gain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
-    partial3.connect(partial3Gain);
-    partial3Gain.connect(ctx.destination);
-    partial3.start(now);
-    partial3.stop(now + 2.5);
-
-    const bufferSize = ctx.sampleRate * 0.08;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
-    const noiseSource = ctx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.3, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-    noiseSource.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noiseSource.start(now);
-  };
-
-  const handleSessionCompleteRef = useRef();
+  // Sync displayed mode to active timer if navigating back
   useEffect(() => {
-    handleSessionCompleteRef.current = handleSessionComplete;
-  });
-
-  useEffect(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
     if (isRunning) {
-      if (mode === MODES.STOPWATCH) {
-        intervalRef.current = setInterval(() => {
-          setElapsedMs(Date.now() - startTimeRef.current);
-        }, showMs ? 10 : 1000);
-      } else {
-        intervalRef.current = setInterval(() => {
-          setTimeLeft(prev => {
-            if (prev <= 1) {
-              if (intervalRef.current) clearInterval(intervalRef.current);
-              intervalRef.current = null;
-              setIsRunning(false);
-              if (handleSessionCompleteRef.current) handleSessionCompleteRef.current();
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
+      setDisplayedMode(mode);
     }
-    
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isRunning, mode, showMs]);
+  }, [isRunning, mode]);
 
-  const handleSessionComplete = () => {
-    playTempleBell();
-    if (subjectId && topicId && (mode === MODES.POMODORO || mode === MODES.COUNTDOWN)) {
-      addSession({
-        date: format(new Date(), 'yyyy-MM-dd'),
-        subjectId,
-        topicId,
-        duration: initialTime,
-        mode
-      });
-    }
-
-    if (mode === MODES.POMODORO) {
-      if (pomodoroState === 'focus') {
-        const newCount = pomodoroCount + 1;
-        setPomodoroCount(newCount);
-        if (newCount % 4 === 0) {
-          setPomodoroState('longBreak');
-          setTimeLeft(settings.longBreakDuration * 60);
-          setInitialTime(settings.longBreakDuration * 60);
-        } else {
-          setPomodoroState('shortBreak');
-          setTimeLeft(settings.shortBreakDuration * 60);
-          setInitialTime(settings.shortBreakDuration * 60);
-        }
-      } else {
-        setPomodoroState('focus');
-        setTimeLeft(settings.focusDuration * 60);
-        setInitialTime(settings.focusDuration * 60);
-      }
-      setIsRunning(true);
-    }
-  };
-
-  const handleModeChange = (newMode) => {
-    setMode(newMode);
-    setIsRunning(false);
-    if (newMode === MODES.POMODORO) {
-      setTimeLeft(settings.focusDuration * 60);
-      setInitialTime(settings.focusDuration * 60);
-      setPomodoroState('focus');
-    } else if (newMode === MODES.COUNTDOWN) {
-      setTimeLeft(10 * 60);
-      setInitialTime(10 * 60);
-    } else {
-      setElapsedMs(0);
-    }
+  const handleModeTabClick = (newMode) => {
+    setDisplayedMode(newMode);
   };
 
   const formatTime = (secs) => {
@@ -228,8 +81,10 @@ export default function TimerView() {
     secs = Math.min(Math.max(secs, 0), 59);
     const total = mins * 60 + secs;
     if (total > 0) {
-      setTimeLeft(total);
-      setInitialTime(total);
+      setTimerSession({
+        timeLeft: total,
+        totalDuration: total
+      });
     }
   };
 
@@ -252,23 +107,39 @@ export default function TimerView() {
     }
     setIsFocusModalOpen(false);
     setIsFocusSessionActive(true);
-    setMode(MODES.POMODORO);
-    setIsRunning(true);
+    if (isRunning && mode !== MODES.POMODORO) {
+      if (!window.confirm("A timer is already running. Stop it and start a new Focus Session?")) {
+        return;
+      }
+    }
+    setDisplayedMode(MODES.POMODORO);
+    setTimerSession({
+      mode: MODES.POMODORO,
+      isRunning: true,
+      lastTickAt: Date.now(),
+      timeLeft: settings.focusDuration * 60,
+      totalDuration: settings.focusDuration * 60,
+      sessionType: 'focus'
+    });
   };
 
   const endFocusSession = () => {
     setIsFocusSessionActive(false);
     setFocusPdfDoc(null);
-    setIsRunning(false);
+    setTimerSession({ isRunning: false });
   };
 
-  const progress = mode === MODES.STOPWATCH ? 1 : (initialTime > 0 ? timeLeft / initialTime : 0);
+  // Determine what to show. If displayedMode !== mode, show a reset/inactive view for that mode.
+  const isViewingActiveMode = displayedMode === mode;
+  const displayTimeLeft = isViewingActiveMode ? timeLeft : (displayedMode === MODES.COUNTDOWN ? 10 * 60 : (displayedMode === MODES.POMODORO ? settings.focusDuration * 60 : 0));
+  const displayTotal = isViewingActiveMode ? totalDuration : displayTimeLeft;
+  const progress = displayedMode === MODES.STOPWATCH ? 1 : (displayTotal > 0 ? displayTimeLeft / displayTotal : 0);
+  
   const currentSubject = subjects.find(s => s.id === subjectId);
   const availableTopics = currentSubject ? currentSubject.topics : [];
-  const ringColor = (mode === MODES.POMODORO && pomodoroState !== 'focus') ? '#4caf7d' : 'var(--accent-vivid)';
+  const ringColor = (displayedMode === MODES.POMODORO && sessionType !== 'focus' && isViewingActiveMode) ? '#4caf7d' : 'var(--accent-vivid)';
   const activePdfMeta = pdfs.find(p => p.id === focusPdfId);
 
-  // Handle Divider Drag
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
     const handleMouseMove = (moveEvent) => {
@@ -285,24 +156,123 @@ export default function TimerView() {
     document.body.style.cursor = 'col-resize';
   }, []);
 
+  const toggleTimer = () => {
+    if (isRunning) {
+      if (!isViewingActiveMode) {
+        if (window.confirm("A timer is already running. Stop it and start a new one?")) {
+          setTimerSession({
+            mode: displayedMode,
+            isRunning: true,
+            timeLeft: displayTimeLeft,
+            totalDuration: displayTotal,
+            sessionType: displayedMode === MODES.POMODORO ? 'focus' : 'focus',
+            lastTickAt: Date.now()
+          });
+        }
+      } else {
+        // Just pause current
+        setTimerSession({ isRunning: false });
+        if (mode === MODES.STOPWATCH && subjectId && topicId) {
+          const unloggedMs = timeLeft - loggedStopwatchMs;
+          if (unloggedMs >= 1000) {
+            addSession({
+              date: format(new Date(), 'yyyy-MM-dd'),
+              subjectId, topicId,
+              duration: Math.floor(unloggedMs / 1000),
+              mode: 'stopwatch'
+            });
+            setTimerSession({ loggedStopwatchMs: timeLeft });
+          }
+        }
+      }
+    } else {
+      // Starting from stopped
+      if (!isViewingActiveMode) {
+        setTimerSession({
+          mode: displayedMode,
+          isRunning: true,
+          timeLeft: displayTimeLeft,
+          totalDuration: displayTotal,
+          sessionType: displayedMode === MODES.POMODORO ? 'focus' : 'focus',
+          lastTickAt: Date.now()
+        });
+      } else {
+        setTimerSession({ isRunning: true, lastTickAt: Date.now() });
+      }
+    }
+  };
+
+  const resetTimer = () => {
+    if (isRunning && !isViewingActiveMode) {
+      if (!window.confirm("A timer is already running. Stop it and reset this one?")) return;
+    }
+    setTimerSession({ isRunning: false, mode: displayedMode });
+    if (displayedMode === MODES.POMODORO) {
+      let duration = settings.focusDuration * 60;
+      if (sessionType === 'shortBreak' && isViewingActiveMode) duration = settings.shortBreakDuration * 60;
+      else if (sessionType === 'longBreak' && isViewingActiveMode) duration = settings.longBreakDuration * 60;
+      setTimerSession({ timeLeft: duration, totalDuration: duration });
+    } else if (displayedMode === MODES.COUNTDOWN) {
+      setTimerSession({ timeLeft: displayTotal });
+    } else {
+      setTimerSession({ timeLeft: 0, loggedStopwatchMs: 0 });
+    }
+  };
+
   const TimerContent = (
-    <div className={`timer-view ${pomodoroState !== 'focus' && mode === MODES.POMODORO ? 'break-mode' : ''} ${isFocusSessionActive ? 'in-split' : ''}`}>
-      <div className="mode-selector">
+    <div className={`timer-view ${sessionType !== 'focus' && displayedMode === MODES.POMODORO && isViewingActiveMode ? 'break-mode' : ''} ${isFocusSessionActive ? 'in-split' : ''}`}>
+      <div style={{ position: 'relative', display: 'inline-flex', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999, padding: 3, marginBottom: 24 }}>
+        <motion.div
+          layout
+          layoutId="timer-mode-pill"
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: `calc(${Object.values(MODES).indexOf(displayedMode)} * (100% / 3) + 3px)`,
+            width: 'calc(100% / 3 - 6px)',
+            height: 'calc(100% - 6px)',
+            background: 'rgba(255,255,255,0.13)',
+            borderRadius: 999,
+          }}
+        />
         {Object.values(MODES).map(m => (
           <button 
             key={m} 
-            className={`mode-btn ${mode === m ? 'active' : ''}`}
-            onClick={() => handleModeChange(m)}
+            onClick={() => handleModeTabClick(m)}
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              height: 32,
+              padding: '0 20px',
+              border: 'none',
+              background: 'transparent',
+              color: displayedMode === m ? '#fff' : 'rgba(255,255,255,0.45)',
+              fontWeight: displayedMode === m ? 600 : 400,
+              fontSize: 14,
+              cursor: 'pointer',
+              borderRadius: 999,
+              transition: 'color 200ms',
+              whiteSpace: 'nowrap',
+            }}
           >
             {m}
           </button>
         ))}
       </div>
 
-      <div className="timer-main">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={displayedMode}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="timer-main"
+        >
         <ProgressRing radius={isFocusSessionActive ? 120 : 170} stroke={8} progress={progress} color={ringColor}>
-          {mode === MODES.STOPWATCH ? (
-            <div className="time-display">{formatStopwatch(elapsedMs)}</div>
+          {displayedMode === MODES.STOPWATCH ? (
+            <div className="time-display">{formatStopwatch(displayTimeLeft)}</div>
           ) : isEditingCountdown ? (
             <input 
               autoFocus
@@ -315,23 +285,23 @@ export default function TimerView() {
             />
           ) : (
             <div 
-              className={`time-display ${mode === MODES.COUNTDOWN && !isRunning ? 'editable' : ''}`}
+              className={`time-display ${displayedMode === MODES.COUNTDOWN && (!isRunning || !isViewingActiveMode) ? 'editable' : ''}`}
               onClick={() => {
-                if (mode === MODES.COUNTDOWN && !isRunning) {
-                  setCountdownInput(formatTime(timeLeft));
+                if (displayedMode === MODES.COUNTDOWN && (!isRunning || !isViewingActiveMode)) {
+                  setCountdownInput(formatTime(displayTimeLeft));
                   setIsEditingCountdown(true);
                 }
               }}
             >
-              {formatTime(timeLeft)}
+              {formatTime(displayTimeLeft)}
             </div>
           )}
 
-          {mode === MODES.COUNTDOWN && !isRunning && !isEditingCountdown && (
+          {displayedMode === MODES.COUNTDOWN && (!isRunning || !isViewingActiveMode) && !isEditingCountdown && (
             <div className="edit-hint"><Edit2 size={12} /> Click to set time</div>
           )}
           
-          {mode === MODES.STOPWATCH && (
+          {displayedMode === MODES.STOPWATCH && (
             <div className="ms-toggle-wrapper">
               <label className="ms-toggle">
                 <input type="checkbox" checked={showMs} onChange={(e) => setShowMs(e.target.checked)} />
@@ -341,74 +311,48 @@ export default function TimerView() {
             </div>
           )}
 
-          {mode === MODES.POMODORO && (
+          {displayedMode === MODES.POMODORO && (
             <div className="pomodoro-indicator">
-              {pomodoroState === 'focus' ? 'Focus' : pomodoroState === 'shortBreak' ? 'Short Break' : 'Long Break'}
+              {isViewingActiveMode ? (sessionType === 'focus' ? 'Focus' : sessionType === 'shortBreak' ? 'Short Break' : 'Long Break') : 'Focus'}
             </div>
           )}
         </ProgressRing>
 
         <div className="controls">
-          <button className="control-btn" onClick={() => {
-            if (isRunning) {
-              setIsRunning(false);
-              if (mode === MODES.STOPWATCH && subjectId && topicId) {
-                const unloggedMs = elapsedMs - loggedStopwatchMs;
-                if (unloggedMs >= 1000) {
-                  addSession({
-                    date: format(new Date(), 'yyyy-MM-dd'),
-                    subjectId, topicId,
-                    duration: Math.floor(unloggedMs / 1000),
-                    mode: 'stopwatch'
-                  });
-                  setLoggedStopwatchMs(elapsedMs);
-                }
-              }
-            } else {
-              if (mode === MODES.STOPWATCH) startTimeRef.current = Date.now() - elapsedMs;
-              setIsRunning(true);
-            }
-          }}>
-            {isRunning ? <Pause size={32} /> : <Play size={32} />}
+          <button className="control-btn" onClick={toggleTimer}>
+            {isRunning && isViewingActiveMode ? <Pause size={32} /> : <Play size={32} />}
           </button>
-          <button className="control-btn secondary" onClick={() => {
-            setIsRunning(false);
-            if (mode === MODES.POMODORO && pomodoroState === 'focus') setTimeLeft(settings.focusDuration * 60);
-            else if (mode === MODES.POMODORO && pomodoroState === 'shortBreak') setTimeLeft(settings.shortBreakDuration * 60);
-            else if (mode === MODES.POMODORO && pomodoroState === 'longBreak') setTimeLeft(settings.longBreakDuration * 60);
-            else if (mode === MODES.COUNTDOWN) setTimeLeft(initialTime);
-            else { setElapsedMs(0); setLoggedStopwatchMs(0); }
-          }}>
+          <button className="control-btn secondary" onClick={resetTimer}>
             <RotateCcw size={24} />
           </button>
         </div>
         
-        {mode === MODES.POMODORO && (
-          <div className="pomodoro-count">🍅 x {pomodoroCount}</div>
+        {displayedMode === MODES.POMODORO && (
+          <div className="pomodoro-count">🍅 x {isViewingActiveMode ? pomodoroCount : 0}</div>
         )}
-      </div>
+        </motion.div>
+      </AnimatePresence>
 
       <div className="session-context glass">
         <select value={subjectId} onChange={(e) => {
-          setSubjectId(e.target.value);
-          setTopicId('');
+          setTimerSession({ subjectId: e.target.value, topicId: '' });
         }} className="context-select">
           <option value="">Select Subject</option>
           {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         
-        <select value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={!subjectId} className="context-select">
+        <select value={topicId} onChange={(e) => setTimerSession({ topicId: e.target.value })} disabled={!subjectId} className="context-select">
           <option value="">Select Topic</option>
           {availableTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </div>
 
       {!isFocusSessionActive ? (
-        <button className="primary-btn focus-btn" onClick={() => setIsFocusModalOpen(true)}>
+        <button className="btn-primary focus-btn" onClick={() => setIsFocusModalOpen(true)}>
           <Zap size={16} /> Start Focus Session
         </button>
       ) : (
-        <button className="cancel-btn focus-btn" onClick={endFocusSession} style={{ marginTop: 16 }}>
+        <button className="btn-ghost focus-btn" onClick={endFocusSession} style={{ marginTop: 16 }}>
           End Focus Session
         </button>
       )}
@@ -447,22 +391,22 @@ export default function TimerView() {
 
       {isFocusModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content glass">
+          <div className="modal-content card">
             <div className="modal-header">
-              <h2>Start Focus Session</h2>
-              <button className="icon-btn" onClick={() => setIsFocusModalOpen(false)}><X size={20}/></button>
+              <h2 className="text-xl">Start Focus Session</h2>
+              <button className="icon-btn" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => setIsFocusModalOpen(false)}><X size={20}/></button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label>Subject</label>
-                <select className="form-input" value={subjectId} onChange={e => { setSubjectId(e.target.value); setTopicId(''); }}>
+                <select className="form-input" value={subjectId} onChange={e => setTimerSession({ subjectId: e.target.value, topicId: '' })}>
                   <option value="">Select Subject</option>
                   {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
                 <label>Topic</label>
-                <select className="form-input" value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId}>
+                <select className="form-input" value={topicId} onChange={e => setTimerSession({ topicId: e.target.value })} disabled={!subjectId}>
                   <option value="">Select Topic</option>
                   {availableTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
@@ -476,8 +420,8 @@ export default function TimerView() {
               </div>
             </div>
             <div className="modal-footer" style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button className="cancel-btn" onClick={() => setIsFocusModalOpen(false)}>Cancel</button>
-              <button className="primary-btn" onClick={startFocusSession} disabled={!subjectId || !topicId}>Begin Session</button>
+              <button className="btn-ghost" onClick={() => setIsFocusModalOpen(false)}>Cancel</button>
+              <button className="btn-primary" onClick={startFocusSession} disabled={!subjectId || !topicId}>Begin Session</button>
             </div>
           </div>
         </div>
@@ -549,8 +493,8 @@ export default function TimerView() {
 
         .time-display {
           font-family: "SF Mono", "JetBrains Mono", monospace;
-          font-size: clamp(36px, 12vw, 76px);
-          font-weight: 500;
+          font-size: 48px;
+          font-weight: 700;
           letter-spacing: -2px;
           color: var(--text-primary);
           line-height: 1;
@@ -582,8 +526,8 @@ export default function TimerView() {
 
         .time-input {
           font-family: "SF Mono", "JetBrains Mono", monospace;
-          font-size: clamp(36px, 12vw, 76px);
-          font-weight: 500;
+          font-size: 48px;
+          font-weight: 700;
           letter-spacing: -2px;
           color: var(--text-primary);
           line-height: 1;
@@ -605,7 +549,7 @@ export default function TimerView() {
         }
         
         .pomodoro-indicator {
-          font-size: 14px;
+          font-size: 11px;
           color: var(--text-muted);
           margin-top: 8px;
           text-transform: uppercase;
@@ -680,7 +624,7 @@ export default function TimerView() {
         }
 
         .pomodoro-count {
-          font-size: 16px;
+          font-size: 12px;
           color: var(--text-muted);
           font-weight: 500;
         }

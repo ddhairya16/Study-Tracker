@@ -1,13 +1,16 @@
 import React from 'react';
+import AnimatedNumber from '../ui/AnimatedNumber';
 
 export default function StatCard({ title, value, icon: Icon, trend, sublabel }) {
   return (
-    <div className="stat-card glass">
+    <div className="stat-card card glass">
       <div className="stat-icon-wrapper">
         <Icon size={20} className="stat-icon" />
       </div>
       <div className="stat-content">
-        <div className="stat-value">{value}</div>
+        <div className="stat-value">
+          {typeof value === 'number' && !title.includes('Hours') ? <AnimatedNumber value={value} /> : value}
+        </div>
         <div className="stat-title">{title}</div>
         {sublabel && <div className="stat-sublabel">{sublabel}</div>}
       </div>

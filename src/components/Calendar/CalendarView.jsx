@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -74,7 +74,7 @@ export default function CalendarView() {
   };
 
   // Format events for FullCalendar
-  const calendarEvents = events.map(e => ({
+  const calendarEvents = useMemo(() => events.map(e => ({
     id: e.id,
     title: e.title,
     start: e.start,
@@ -85,7 +85,7 @@ export default function CalendarView() {
     extendedProps: {
       completed: e.completed
     }
-  }));
+  })), [events]);
 
   const renderEventContent = (eventInfo) => {
     const { event } = eventInfo;
@@ -101,36 +101,40 @@ export default function CalendarView() {
 
   return (
     <div className="calendar-view">
-      <CalendarToolbar 
-        title={currentTitle}
-        view={currentView}
-        onNavigate={handleNavigate}
-        onViewChange={handleViewChange}
-      />
+      <div style={{ padding: '32px 40px 0' }}>
+        <CalendarToolbar 
+          title={currentTitle}
+          view={currentView}
+          onNavigate={handleNavigate}
+          onViewChange={handleViewChange}
+        />
+      </div>
       
       <div className="calendar-container">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          headerToolbar={false}
-          initialView={currentView}
-          events={calendarEvents}
-          editable={true}
-          selectable={true}
-          selectMirror={true}
-          dayMaxEvents={true}
-          slotMinTime="06:00:00"
-          slotMaxTime="23:00:00"
-          datesSet={handleDateSet}
-          select={handleDateSelect}
-          eventClick={handleEventClick}
-          eventDrop={handleEventDrop}
-          eventResize={handleEventResize}
-          eventContent={renderEventContent}
-          height="100%"
-          allDaySlot={false}
-          nowIndicator={true}
-        />
+        {useMemo(() => (
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            headerToolbar={false}
+            initialView={currentView}
+            events={calendarEvents}
+            editable={true}
+            selectable={true}
+            selectMirror={true}
+            dayMaxEvents={true}
+            slotMinTime="06:00:00"
+            slotMaxTime="23:00:00"
+            datesSet={handleDateSet}
+            select={handleDateSelect}
+            eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventResize={handleEventResize}
+            eventContent={renderEventContent}
+            height="100%"
+            allDaySlot={false}
+            nowIndicator={true}
+          />
+        ), [calendarEvents, currentView])}
       </div>
 
       <EventPanel 

@@ -43,10 +43,10 @@ export default function CurriculumView() {
   };
 
   return (
-    <div className="curriculum-view">
+    <div className="curriculum-view view-container">
       <div className="header-row">
-        <h2>Curriculum</h2>
-        <button className="primary-btn" onClick={() => setIsAddingSubject(true)}>
+        <h2 className="text-xl">Curriculum</h2>
+        <button className="btn-primary" onClick={() => setIsAddingSubject(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Plus size={16} /> New Subject
         </button>
       </div>
@@ -54,7 +54,7 @@ export default function CurriculumView() {
       <AnimatePresence>
         {isAddingSubject && (
           <motion.div 
-            className="add-subject-panel glass"
+            className="add-subject-panel card"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -79,8 +79,8 @@ export default function CurriculumView() {
                 ))}
               </div>
               <div className="actions">
-                <button type="button" className="secondary-btn" onClick={() => setIsAddingSubject(false)}>Cancel</button>
-                <button type="submit" className="primary-btn">Save</button>
+                <button type="button" className="btn-ghost" onClick={() => setIsAddingSubject(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save</button>
               </div>
             </form>
           </motion.div>

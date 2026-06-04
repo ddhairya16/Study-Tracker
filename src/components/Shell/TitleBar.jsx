@@ -41,7 +41,6 @@ const styles = {
   titleBar: {
     height: '40px',
     backgroundColor: 'var(--bg-panel)',
-    borderBottom: 'var(--border-glass)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',

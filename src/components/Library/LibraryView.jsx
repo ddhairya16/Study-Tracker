@@ -7,12 +7,8 @@ import { openPdfFromFile } from '../../lib/pdfLoader';
 
 export default function LibraryView() {
   const { pdfs, addPdf, deletePdf, updatePdf, addRecentItem, activePdfId, setActivePdfId } = useStore();
-  const [activePdfDoc, setActivePdfDoc] = useState(null);
-  const [activePdfObjectUrl, setActivePdfObjectUrl] = useState(null);
-
-
-
-  const handleAddPdf = async () => {
+  const [activePdfUrl, setActivePdfUrl] = useState(null);
+  const [lastOpenError, setLastOpenError] = useState(null);  const handleAddPdf = async () => {
     try {
       let file;
       const newPdfId = `pdf-${Date.now()}`;
@@ -38,8 +34,7 @@ export default function LibraryView() {
 
       if (!file) return;
       
-      const { doc, objectUrl } = await openPdfFromFile(file);
-      const totalPages = doc.numPages;
+      const objectUrl = URL.createObjectURL(file);
       
       const newPdf = {
         id: newPdfId,
@@ -47,15 +42,14 @@ export default function LibraryView() {
         subjectId: null,
         folderId: null,
         lastPage: 1,
-        totalPages,
+        totalPages: 1, // Will be updated by viewer
         uploadedAt: new Date().toISOString(),
         annotations: []
       };
       
       addPdf(newPdf);
       setActivePdfId(newPdf.id);
-      setActivePdfDoc(doc);
-      setActivePdfObjectUrl(objectUrl);
+      setActivePdfUrl(objectUrl);
       
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -63,27 +57,88 @@ export default function LibraryView() {
     }
   };
 
-  const handleOpenExistingPdf = async (pdfRecord) => {
+  async function openAndLoadPdf(file, pdfId) {
+    const objectUrl = URL.createObjectURL(file);
+    setActivePdfUrl(objectUrl);
+    
+    // We get lastPage from the store
+    const pdfRecord = useStore.getState().pdfs.find(p => p.id === pdfId);
+    if (pdfRecord) {
+      updatePdf(pdfId, { lastPage: pdfRecord.lastPage ?? 1 });
+    }
+  }
+
+  async function handleReOpenFile(pdfRecord) {
+    setLastOpenError(null);
+    
     try {
+      // Try stored IndexedDB handle first
       const handle = await getFileHandle(pdfRecord.id);
+      
       if (handle) {
-        let perm = await handle.queryPermission({ mode: 'read' });
-        if (perm === 'prompt') perm = await handle.requestPermission({ mode: 'read' });
-        if (perm === 'granted') {
-          const file = await handle.getFile();
-          const { doc, objectUrl } = await openPdfFromFile(file);
-          setActivePdfDoc(doc);
-          setActivePdfObjectUrl(objectUrl);
+        let permission;
+        try {
+          permission = await handle.queryPermission({ mode: 'read' });
+          if (permission === 'prompt') {
+            permission = await handle.requestPermission({ mode: 'read' });
+          }
+        } catch (permErr) {
+          console.warn('Permission check failed:', permErr);
+          permission = 'denied';
+        }
+        
+        if (permission === 'granted') {
+          try {
+            const file = await handle.getFile();
+            await openAndLoadPdf(file, pdfRecord.id);
+            setActivePdfId(pdfRecord.id);
+            return; // success
+          } catch (fileErr) {
+            console.warn('Stored handle getFile failed:', fileErr);
+            // Fall through to file picker
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.warn('IndexedDB lookup failed:', dbErr);
+    }
+    
+    // Fallback: show file picker
+    try {
+      if (typeof window.showOpenFilePicker !== 'undefined') {
+        const [newHandle] = await window.showOpenFilePicker({
+          types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]
+        });
+        const file = await newHandle.getFile();
+        await saveFileHandle(pdfRecord.id, newHandle); // update stored handle
+        await openAndLoadPdf(file, pdfRecord.id);
+        setActivePdfId(pdfRecord.id);
+      } else {
+        // Fallback input
+        const file = await new Promise(resolve => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.pdf';
+          input.onchange = e => resolve(e.target.files[0]);
+          input.click();
+        });
+        if (file) {
+          await openAndLoadPdf(file, pdfRecord.id);
           setActivePdfId(pdfRecord.id);
-          return;
         }
       }
     } catch (err) {
-      console.warn('Stored handle failed, falling back to file picker:', err);
+      if (err.name !== 'AbortError') {
+        setLastOpenError('Could not open file. Please try again.');
+        console.error('File picker failed:', err);
+      }
     }
-    
+  }
+
+  const handleOpenExistingPdf = async (pdfRecord) => {
     setActivePdfId(pdfRecord.id);
-    setActivePdfDoc(null);
+    setActivePdfUrl(null);
+    await handleReOpenFile(pdfRecord);
   };
 
   React.useEffect(() => {
@@ -91,58 +146,34 @@ export default function LibraryView() {
       const activePdf = pdfs.find(p => p.id === activePdfId);
       if (activePdf) {
         addRecentItem({ id: activePdf.id, type: 'pdf', title: activePdf.name });
-        
-        // If we have an active ID but no document loaded (e.g. navigated from Dashboard)
-        if (!activePdfDoc) {
-          handleOpenExistingPdf(activePdf);
-        }
       }
     }
-  }, [activePdfId, activePdfDoc, pdfs, addRecentItem]);
+  }, [activePdfId, pdfs, addRecentItem]);
 
   const handleClose = (currentPage) => {
-    if (activePdfObjectUrl) {
-      URL.revokeObjectURL(activePdfObjectUrl);
+    if (activePdfUrl) {
+      URL.revokeObjectURL(activePdfUrl);
     }
     const activePdf = pdfs.find(p => p.id === activePdfId);
     if (activePdf) {
       updatePdf(activePdf.id, { lastPage: currentPage });
     }
-    setActivePdfDoc(null);
-    setActivePdfObjectUrl(null);
+    setActivePdfUrl(null);
     setActivePdfId(null);
-  };
-
-  const handleReopen = async (id) => {
-    try {
-      const [fileHandle] = await window.showOpenFilePicker({
-        types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }],
-        multiple: false
-      });
-      const file = await fileHandle.getFile();
-      await saveFileHandle(id, fileHandle);
-      const { doc, objectUrl } = await openPdfFromFile(file);
-      setActivePdfDoc(doc);
-      setActivePdfObjectUrl(objectUrl);
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error("Failed to reopen", err);
-      }
-    }
   };
 
   const activePdfMeta = pdfs.find(p => p.id === activePdfId);
 
   return (
     <div className="library-view">
-      <div className="library-sidebar glass">
-        <div className="library-sidebar-header">
-          <h2>Library</h2>
-          <button className="add-btn" onClick={handleAddPdf}>
+      <div className="library-sidebar glass" style={{ paddingTop: 32, paddingBottom: 32 }}>
+        <div className="library-sidebar-header" style={{ padding: '0 32px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
+          <h2 className="text-xl">Library</h2>
+          <button className="btn-secondary" onClick={handleAddPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px' }}>
             <Plus size={16} /> Add PDF
           </button>
         </div>
-        <div className="pdf-list">
+        <div className="pdf-list" style={{ padding: '12px 32px' }}>
           {pdfs.length === 0 ? (
             <p className="empty-text">No PDFs added yet.</p>
           ) : (
@@ -182,16 +213,17 @@ export default function LibraryView() {
       <div className="library-main glass">
         {activePdfId ? (
           <PDFViewer 
-            doc={activePdfDoc} 
+            fileUrl={activePdfUrl} 
             pdf={activePdfMeta}
-            onRequestReopen={() => handleReopen(activePdfId)} 
+            onRequestReopen={() => handleReOpenFile(activePdfMeta)} 
             onClose={handleClose}
+            lastOpenError={lastOpenError}
           />
         ) : (
-          <div className="empty-main">
-            <FileText size={48} className="empty-icon" />
-            <h3>Select or add a PDF</h3>
-            <p>Your library is stored locally on your device.</p>
+          <div className="empty-state">
+            <FileText size={40} style={{ opacity: 0.2 }} />
+            <h3 className="text-md">Select or add a PDF</h3>
+            <p className="text-sm text-muted">Your library is stored locally on your device.</p>
           </div>
         )}
       </div>

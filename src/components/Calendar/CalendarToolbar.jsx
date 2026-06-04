@@ -5,19 +5,19 @@ export default function CalendarToolbar({ title, view, onNavigate, onViewChange 
   return (
     <div className="calendar-toolbar">
       <div className="toolbar-left">
-        <button className="toolbar-btn" onClick={() => onNavigate('PREV')}>
-          <ChevronLeft size={20} />
+        <button className="btn-secondary" style={{ padding: '6px 10px' }} onClick={() => onNavigate('PREV')}>
+          <ChevronLeft size={16} />
         </button>
-        <button className="toolbar-btn text-btn" onClick={() => onNavigate('TODAY')}>
+        <button className="btn-secondary" style={{ padding: '6px 12px' }} onClick={() => onNavigate('TODAY')}>
           Today
         </button>
-        <button className="toolbar-btn" onClick={() => onNavigate('NEXT')}>
-          <ChevronRight size={20} />
+        <button className="btn-secondary" style={{ padding: '6px 10px' }} onClick={() => onNavigate('NEXT')}>
+          <ChevronRight size={16} />
         </button>
       </div>
 
       <div className="toolbar-center">
-        <h2 className="calendar-title">{title}</h2>
+        <h2 className="text-xl">{title}</h2>
       </div>
 
       <div className="toolbar-right">

@@ -1,5 +1,71 @@
 import React from 'react';
-import { Home, Calendar, Timer, BookOpen, ChevronLeft, ChevronRight, Settings, User, FileText, BarChart2, Folder } from 'lucide-react';
+import { Home, Calendar, Timer, BookOpen, ChevronLeft, ChevronRight, Settings, User, FileText, BarChart2, Folder, PenLine } from 'lucide-react';
+import { motion, LayoutGroup } from 'framer-motion';
+
+function NavItem({ icon: Icon, label, view, currentView, onClick, collapsed }) {
+  const isActive = currentView === view;
+  
+  return (
+    <motion.button
+      onClick={() => onClick(view)}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      className={`nav-item ${isActive ? 'active' : ''} ${collapsed ? 'collapsed' : ''}`}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        gap: 10,
+        width: '100%',
+        padding: collapsed ? '9px' : '9px 12px',
+        border: 'none',
+        borderRadius: 8,
+        background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
+        color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+        cursor: 'pointer',
+        fontSize: 13,
+        fontWeight: isActive ? 500 : 400,
+        transition: 'background 180ms ease, color 180ms ease',
+        overflow: 'hidden',
+      }}
+    >
+      {/* THE SLIDING ACCENT BAR — only renders inside the active item */}
+      {isActive && (
+        <motion.div
+          layoutId="sidebar-accent"
+          layout
+          transition={{
+            type: 'spring',
+            stiffness: 380,
+            damping: 30,
+          }}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '15%',
+            height: '70%',
+            width: 3,
+            borderRadius: '0 3px 3px 0',
+            background: 'var(--accent-vivid)',
+          }}
+        />
+      )}
+      
+      <Icon 
+        size={16} 
+        strokeWidth={isActive ? 2.5 : 1.8}
+        style={{ flexShrink: 0, transition: 'stroke-width 180ms ease' }}
+      />
+      
+      {!collapsed && (
+        <span style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          {label}
+        </span>
+      )}
+    </motion.button>
+  );
+}
 
 export default function Sidebar({ collapsed, setCollapsed, currentView, setCurrentView }) {
   const navItems = [
@@ -20,40 +86,55 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
         </button>
       </div>
 
-      <nav className="sidebar-nav">
-        {navItems.map((item, index) => {
-          const isActive = currentView === item.id;
-          return (
-            <button
-              key={item.id}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-              style={{ animationDelay: `${index * 30}ms` }}
-              onClick={() => setCurrentView(item.id)}
-            >
-              <item.icon size={20} className="nav-icon" />
-              {!collapsed && <span className="nav-label">{item.label}</span>}
-            </button>
-          );
-        })}
-      </nav>
+      <LayoutGroup>
+        <nav className="sidebar-nav">
+          {navItems.map((item, index) => (
+            <motion.div key={item.id} style={{ animationDelay: `${index * 30}ms` }} className="nav-item-wrapper">
+              <NavItem
+                icon={item.icon}
+                label={item.label}
+                view={item.id}
+                currentView={currentView}
+                onClick={setCurrentView}
+                collapsed={collapsed}
+              />
+            </motion.div>
+          ))}
+        </nav>
+      </LayoutGroup>
 
       <div className="sidebar-footer">
-        <button 
-          className={`nav-item ${currentView === 'profile' ? 'active' : ''}`} 
-          style={{ animationDelay: '150ms' }}
-          onClick={() => setCurrentView('profile')}
-        >
-          <User size={20} className="nav-icon" />
-          {!collapsed && <span className="nav-label">Profile</span>}
-        </button>
-        <button 
-          className={`nav-item ${currentView === 'settings' ? 'active' : ''}`} 
-          style={{ animationDelay: '180ms' }}
-          onClick={() => setCurrentView('settings')}
-        >
-          <Settings size={20} className="nav-icon" />
-          {!collapsed && <span className="nav-label">Settings</span>}
-        </button>
+        <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 8px', padding: 0 }}></div>
+        <motion.div style={{ animationDelay: '120ms' }} className="nav-item-wrapper">
+          <NavItem
+            icon={PenLine}
+            label="Whiteboard"
+            view="whiteboard"
+            currentView={currentView}
+            onClick={setCurrentView}
+            collapsed={collapsed}
+          />
+        </motion.div>
+        <motion.div style={{ animationDelay: '150ms' }} className="nav-item-wrapper">
+          <NavItem
+            icon={User}
+            label="Profile"
+            view="profile"
+            currentView={currentView}
+            onClick={setCurrentView}
+            collapsed={collapsed}
+          />
+        </motion.div>
+        <motion.div style={{ animationDelay: '180ms' }} className="nav-item-wrapper">
+          <NavItem
+            icon={Settings}
+            label="Settings"
+            view="settings"
+            currentView={currentView}
+            onClick={setCurrentView}
+            collapsed={collapsed}
+          />
+        </motion.div>
       </div>
 
       <style>{`
@@ -61,7 +142,14 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
           width: 220px;
           height: 100%;
           background-color: var(--bg-panel);
-          border-right: var(--border-glass);
+          
+          /* Remove any focus outline */
+          outline: none !important; 
+          
+          /* Keep the right-side hairline border only */
+          border: none;
+          border-right: 1px solid var(--border-subtle);
+          
           display: flex;
           flex-direction: column;
           transition: width 260ms var(--ease-spring);
@@ -71,6 +159,12 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
         .sidebar.collapsed {
           width: 64px;
         }
+        
+        .sidebar:focus,
+        .sidebar *:focus {
+          outline: none;
+        }
+        
         .sidebar-header {
           padding: 16px;
           display: flex;
@@ -101,6 +195,10 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
           flex-direction: column;
           gap: 4px;
           padding: 0 12px;
+          
+          box-shadow: none;
+          border: none;
+          outline: none;
         }
         .sidebar-footer {
           padding: 12px;
@@ -109,52 +207,15 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
           gap: 4px;
           border-top: var(--border-glass);
         }
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 12px;
-          border-radius: 8px;
-          border: none;
-          background: transparent;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: background 200ms var(--ease-standard), transform 200ms var(--ease-standard), color 200ms var(--ease-standard);
+        
+        .nav-item-wrapper {
           animation: slideInRight 0.3s var(--ease-spring) backwards;
-          white-space: nowrap;
-          text-align: left;
-          width: 100%;
         }
-        .sidebar.collapsed .nav-item {
-          padding: 10px;
-          justify-content: center;
-        }
-        .nav-item:hover {
-          background: rgba(255, 255, 255, 0.04);
-          color: var(--text-primary);
-          transform: scale(1.01);
-        }
-        .nav-item:active {
-          transform: scale(0.97);
-        }
-        .nav-item.active {
-          background: rgba(0, 212, 255, 0.1);
-          color: var(--text-primary);
-          border-left: 3px solid var(--accent-vivid);
-          padding-left: 9px;
-        }
-        .sidebar.collapsed .nav-item.active {
-          padding-left: 7px;
-        }
-        .nav-label {
-          font-size: 14px;
-          font-weight: 500;
-          opacity: 1;
-          transition: opacity 260ms var(--ease-standard);
-        }
-        .sidebar.collapsed .nav-label {
-          opacity: 0;
-          display: none;
+        
+        /* Nav Item hover state */
+        .nav-item:hover:not(.active) {
+          background: rgba(255,255,255,0.04) !important;
+          color: rgba(255,255,255,0.75) !important;
         }
       `}</style>
     </div>

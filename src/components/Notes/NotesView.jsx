@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, FolderPlus, FilePlus, FileText, FolderTree, 
 import { format } from 'date-fns';
 import TipTapEditor from './TipTapEditor';
 import { DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core';
+import { AnimatePresence, motion } from 'framer-motion';
 
 function DroppableZone({ id, children, className }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -71,6 +72,8 @@ export default function NotesView() {
   const [localNoteTitle, setLocalNoteTitle] = useState('');
   
   const saveTimeoutRef = useRef(null);
+  const showSavedTimeoutRef = useRef(null);
+  const [showSaved, setShowSaved] = useState(false);
 
   useEffect(() => {
     if (!activeNoteId) return;
@@ -85,6 +88,9 @@ export default function NotesView() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       updateNote(activeNoteId, { body: jsonStr });
+      setShowSaved(true);
+      if (showSavedTimeoutRef.current) clearTimeout(showSavedTimeoutRef.current);
+      showSavedTimeoutRef.current = setTimeout(() => setShowSaved(false), 2000);
     }, 500);
   };
 
@@ -95,6 +101,9 @@ export default function NotesView() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       updateNote(activeNoteId, { title: val });
+      setShowSaved(true);
+      if (showSavedTimeoutRef.current) clearTimeout(showSavedTimeoutRef.current);
+      showSavedTimeoutRef.current = setTimeout(() => setShowSaved(false), 2000);
     }, 500);
   };
 
@@ -392,8 +401,20 @@ export default function NotesView() {
                   )}
                 </div>
               </div>
-              <div className="note-meta">
+              <div className="note-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 Last edited {format(new Date(activeNote.updatedAt), 'MMM d, HH:mm')}
+                <AnimatePresence>
+                  {showSaved && (
+                    <motion.span
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      style={{ fontSize: 11, color: 'var(--text-muted)' }}
+                    >
+                      ✓ Saved
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
             
@@ -401,8 +422,8 @@ export default function NotesView() {
           </div>
         ) : (
           <div className="empty-state">
-            <FileText size={48} className="empty-icon" />
-            <p>Select a note or create a new one</p>
+            <FileText size={40} style={{ opacity: 0.2 }} />
+            <p className="text-muted">Select a note or create a new one</p>
           </div>
         )}
       </div>
@@ -682,20 +703,6 @@ export default function NotesView() {
         .note-meta {
           font-size: 12px;
           color: var(--text-disabled);
-        }
-
-        .empty-state {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          color: var(--text-disabled);
-          gap: 16px;
-        }
-        
-        .empty-icon {
-          opacity: 0.5;
         }
       `}</style>
     </div>

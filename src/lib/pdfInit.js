@@ -1,9 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
+
 // Vite-compatible worker import
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).href;
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export { pdfjsLib };

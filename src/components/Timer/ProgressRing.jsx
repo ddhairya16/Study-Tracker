@@ -48,11 +48,16 @@ export default function ProgressRing({ radius, stroke, progress, color, children
         }
         .progress-ring-content {
           position: absolute;
-          inset: 0;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
+          text-align: center;
+          width: 65%;
+          overflow: hidden;
         }
       `}</style>
     </div>

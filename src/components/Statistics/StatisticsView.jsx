@@ -296,23 +296,23 @@ export default function StatisticsView() {
   }, [sessions, subjects, categoryFilter]);
 
   return (
-    <div className="statistics-view">
+    <div className="statistics-view view-container">
       <div className="view-header">
-        <h1>Statistics</h1>
-        <p className="subtitle">Track your progress and build consistent study habits.</p>
+        <h1 className="text-xl">Statistics</h1>
+        <p className="text-sm text-muted">Track your progress and build consistent study habits.</p>
       </div>
 
-      <div className="section glass">
-        <h2>Activity Heatmap</h2>
+      <div className="section card">
+        <h2 className="text-lg">Activity Heatmap</h2>
         <Heatmap data={dailyMinutes} days={365} />
         <div className="heatmap-summary">
           {activeDaysYear} days active in the last year &middot; {maxStreak} day longest streak &middot; {currentStreak} day current streak
         </div>
       </div>
 
-      <div className="section glass period-section">
+      <div className="section card period-section">
         <div className="section-header">
-          <h2>Period Breakdown</h2>
+          <h2 className="text-lg">Period Breakdown</h2>
           <div className="tabs">
             {['This Week', 'This Month', 'Today'].map(tab => (
               <button 
@@ -338,7 +338,9 @@ export default function StatisticsView() {
               <div className="today-timeline">
                 {todaySessions.length === 0 ? (
                   <div className="empty-state">
-                    <p>No study sessions recorded today. Start the timer to begin tracking.</p>
+                    <Clock size={40} style={{ opacity: 0.2 }} />
+                    <h3 className="text-md">No study sessions</h3>
+                    <p className="text-sm text-muted">Start the timer to begin tracking.</p>
                   </div>
                 ) : (
                   <div className="timeline-list">
@@ -395,9 +397,9 @@ export default function StatisticsView() {
         </AnimatePresence>
       </div>
 
-      <div className="section glass">
+      <div className="section card">
         <div className="section-header">
-          <h2>Subject Breakdown</h2>
+          <h2 className="text-lg">Subject Breakdown</h2>
           <div className="segmented-control">
             {['All time', 'This month', 'This week'].map(cat => (
               <button 
@@ -413,7 +415,9 @@ export default function StatisticsView() {
         
         {subjectData.length === 0 ? (
           <div className="empty-state">
-            <p>Complete timer sessions tagged to subjects to see your breakdown.</p>
+            <BookOpen size={40} style={{ opacity: 0.2 }} />
+            <h3 className="text-md">No subject data</h3>
+            <p className="text-sm text-muted">Complete timer sessions tagged to subjects to see your breakdown.</p>
           </div>
         ) : (
           <div className="subject-bars">
@@ -565,16 +569,6 @@ export default function StatisticsView() {
           color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
-        }
-
-        .empty-state {
-          padding: 40px;
-          text-align: center;
-          color: var(--text-muted);
-          font-size: 14px;
-          background: rgba(0,0,0,0.1);
-          border-radius: 12px;
-          border: 1px dashed rgba(255,255,255,0.1);
         }
 
         .timeline-list {

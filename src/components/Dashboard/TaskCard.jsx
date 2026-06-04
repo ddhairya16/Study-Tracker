@@ -14,7 +14,7 @@ export default function TaskCard({ event }) {
   const timeString = `${format(startTime, 'HH:mm')} - ${format(endTime, 'HH:mm')}`;
 
   return (
-    <div className={`task-card glass ${event.completed ? 'completed' : ''}`}>
+    <div className={`task-card card glass ${event.completed ? 'completed' : ''}`}>
       <button 
         className="checkbox-btn" 
         onClick={() => toggleEventCompletion(event.id)}

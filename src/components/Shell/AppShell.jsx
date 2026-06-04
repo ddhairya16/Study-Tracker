@@ -12,9 +12,12 @@ import NotesView from '../Notes/NotesView';
 import ProfileView from '../Profile/ProfileView';
 import SettingsView from '../Settings/SettingsView';
 import LibraryView from '../Library/LibraryView';
+import WhiteboardView from '../Whiteboard/WhiteboardView';
 import OnboardingModal from './OnboardingModal';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import { useStore } from '../../store/useStore';
+import FloatingTimerWidget from '../Timer/FloatingTimerWidget';
+import { format } from 'date-fns';
 
 function ToastContainer() {
   const { toasts, removeToast } = useStore();
@@ -94,8 +97,134 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const { settings, profile, subjects, sessions, events, showToast } = useStore();
+  const { settings, profile, subjects, sessions, events, showToast, timerSession, setTimerSession, tickTimer, tickStopwatch, addSession } = useStore();
   const notifiedEvents = React.useRef(new Set());
+  const audioCtxRef = React.useRef(null);
+  
+  const playTempleBell = React.useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const fundamental = ctx.createOscillator();
+    const fundamentalGain = ctx.createGain();
+    fundamental.type = 'sine';
+    fundamental.frequency.setValueAtTime(110, now);
+    fundamental.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+    fundamentalGain.gain.setValueAtTime(0, now);
+    fundamentalGain.gain.linearRampToValueAtTime(0.7, now + 0.01);
+    fundamentalGain.gain.exponentialRampToValueAtTime(0.001, now + 6);
+    fundamental.connect(fundamentalGain);
+    fundamentalGain.connect(ctx.destination);
+    fundamental.start(now);
+    fundamental.stop(now + 6);
+
+    const partial2 = ctx.createOscillator();
+    const partial2Gain = ctx.createGain();
+    partial2.type = 'sine';
+    partial2.frequency.setValueAtTime(275, now);
+    partial2Gain.gain.setValueAtTime(0, now);
+    partial2Gain.gain.linearRampToValueAtTime(0.4, now + 0.01);
+    partial2Gain.gain.exponentialRampToValueAtTime(0.001, now + 4);
+    partial2.connect(partial2Gain);
+    partial2Gain.connect(ctx.destination);
+    partial2.start(now);
+    partial2.stop(now + 4);
+
+    const partial3 = ctx.createOscillator();
+    const partial3Gain = ctx.createGain();
+    partial3.type = 'sine';
+    partial3.frequency.setValueAtTime(550, now);
+    partial3Gain.gain.setValueAtTime(0, now);
+    partial3Gain.gain.linearRampToValueAtTime(0.15, now + 0.01);
+    partial3Gain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+    partial3.connect(partial3Gain);
+    partial3Gain.connect(ctx.destination);
+    partial3.start(now);
+    partial3.stop(now + 2.5);
+
+    const bufferSize = ctx.sampleRate * 0.08;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.3, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    noiseSource.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseSource.start(now);
+  }, []);
+
+  // Global Timer Effect
+  React.useEffect(() => {
+    let intervalId;
+    if (timerSession.isRunning) {
+      if (timerSession.mode === 'Stopwatch') {
+        // Stopwatch increases time in ms
+        intervalId = setInterval(() => {
+          tickStopwatch();
+        }, 100);
+      } else {
+        // Pomodoro / Countdown decreases time
+        intervalId = setInterval(() => {
+          tickTimer();
+          
+          // Check for completion inside effect using current store state
+          const currentStore = useStore.getState();
+          const currentTimer = currentStore.timerSession;
+          
+          if (currentTimer.timeLeft <= 0 && currentTimer.isRunning) {
+            playTempleBell();
+            
+            // Log session if it was a valid work interval
+            if (currentTimer.subjectId && currentTimer.topicId && 
+                (currentTimer.mode === 'Countdown' || (currentTimer.mode === 'Pomodoro' && currentTimer.sessionType === 'focus'))) {
+              addSession({
+                date: format(new Date(), 'yyyy-MM-dd'),
+                subjectId: currentTimer.subjectId,
+                topicId: currentTimer.topicId,
+                duration: currentTimer.totalDuration,
+                mode: currentTimer.mode
+              });
+            }
+            
+            if (currentTimer.mode === 'Pomodoro') {
+              if (currentTimer.sessionType === 'focus') {
+                const newCount = currentTimer.pomodoroCount + 1;
+                const isLongBreak = newCount % 4 === 0;
+                setTimerSession({
+                  sessionType: isLongBreak ? 'longBreak' : 'shortBreak',
+                  timeLeft: (isLongBreak ? settings.longBreakDuration : settings.shortBreakDuration) * 60,
+                  totalDuration: (isLongBreak ? settings.longBreakDuration : settings.shortBreakDuration) * 60,
+                  pomodoroCount: newCount,
+                  lastTickAt: Date.now()
+                });
+                showToast(isLongBreak ? "Time for a long break!" : "Time for a short break!", 'info');
+              } else {
+                setTimerSession({
+                  sessionType: 'focus',
+                  timeLeft: settings.focusDuration * 60,
+                  totalDuration: settings.focusDuration * 60,
+                  lastTickAt: Date.now()
+                });
+                showToast("Break is over. Back to focus!", 'info');
+              }
+            } else {
+              // Countdown completed, just stop
+              setTimerSession({ isRunning: false, timeLeft: 0 });
+              showToast("Timer complete!", 'success');
+            }
+          }
+        }, 1000);
+      }
+    }
+    
+    return () => clearInterval(intervalId);
+  }, [timerSession.isRunning, timerSession.mode, tickTimer, tickStopwatch, addSession, playTempleBell, settings, showToast, setTimerSession]);
 
   const showOnboarding = !profile.hasCompletedOnboarding && profile.name === 'Student' && subjects.length <= 2 && sessions.length === 0;
 
@@ -179,6 +308,7 @@ export default function AppShell() {
           case '5': e.preventDefault(); setCurrentView('curriculum'); break;
           case '6': e.preventDefault(); setCurrentView('notes'); break;
           case '7': e.preventDefault(); setCurrentView('library'); break;
+          case '8': e.preventDefault(); setCurrentView('whiteboard'); break;
           case 'b': 
           case 'B': e.preventDefault(); setCollapsed(prev => !prev); break;
           case 'f':
@@ -203,6 +333,7 @@ export default function AppShell() {
       case 'statistics': return <StatisticsView />;
       case 'curriculum': return <CurriculumView />;
       case 'library': return <LibraryView />;
+      case 'whiteboard': return <ErrorBoundary><WhiteboardView /></ErrorBoundary>;
       case 'notes': return <ErrorBoundary><NotesView /></ErrorBoundary>;
       case 'profile': return <ProfileView />;
       case 'settings': return <SettingsView />;
@@ -225,10 +356,11 @@ export default function AppShell() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentView}
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.99 }}
+                animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+                exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.99 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                style={{ width: '100%', height: '100%' }}
                 className="view-wrapper"
               >
                 {renderView()}
@@ -243,6 +375,8 @@ export default function AppShell() {
       {showOnboarding && (
         <OnboardingModal onComplete={() => useStore.getState().updateProfile({ hasCompletedOnboarding: true })} />
       )}
+
+      <FloatingTimerWidget onNavigateToTimer={() => setCurrentView('timer')} currentView={currentView} />
 
       <ToastContainer />
 

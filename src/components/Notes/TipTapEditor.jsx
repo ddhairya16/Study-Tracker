@@ -149,9 +149,17 @@ export default function TipTapEditor({ content, onChange }) {
   }, [content, editor]);
 
   return (
-    <div className="tiptap-container">
+    <div 
+      className="tiptap-container editor-panel"
+      style={{ flex: 1, overflow: 'auto', cursor: 'text' }}
+      onClick={(e) => {
+        if (editor && !editor.isFocused) {
+          editor.commands.focus('end');
+        }
+      }}
+    >
       <MenuBar editor={editor} />
-      <EditorContent editor={editor} className="tiptap-content" />
+      <EditorContent editor={editor} className="tiptap-content" style={{ height: '100%', display: 'flex', flexDirection: 'column' }} />
       <div className="tiptap-stats">
         {stats.words} words &middot; {stats.characters.toLocaleString()} characters
       </div>
@@ -221,8 +229,16 @@ export default function TipTapEditor({ content, onChange }) {
 
         .tiptap-content {
           flex: 1;
-          overflow-y: auto;
           outline: none;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .ProseMirror {
+          min-height: 100%;
+          outline: none;
+          cursor: text;
+          flex: 1;
         }
 
         /* Prose styles overridden for dark mode */

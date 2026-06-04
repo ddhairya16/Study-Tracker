@@ -128,6 +128,20 @@ export default function SettingsView() {
               ))}
             </div>
           </div>
+          <div className="setting-item">
+            <label>Date Format</label>
+            <div className="segmented-control">
+              {['MM/DD/YYYY', 'DD/MM/YYYY'].map(fmt => (
+                <button
+                  key={fmt}
+                  className={`seg-btn ${settings.dateFormat === fmt || (!settings.dateFormat && fmt === 'MM/DD/YYYY') ? 'active' : ''}`}
+                  onClick={() => updateSettings({ dateFormat: fmt })}
+                >
+                  {fmt}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
