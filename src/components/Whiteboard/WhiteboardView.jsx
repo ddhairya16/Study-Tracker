@@ -44,37 +44,49 @@ function BoardItemInline({ board, isActive, onSelect, onRename, onDelete }) {
 
 export default function WhiteboardView() {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
+  const excalidrawAPIRef = useRef(null);
+  
   const [boards, setBoards] = useState(() => {
     try { return JSON.parse(localStorage.getItem('studytracker_v1_boards') || '[]'); }
     catch { return []; }
   });
+  
   const [activeBoardId, setActiveBoardId] = useState(null);
+  const activeBoardIdRef = useRef(null);
+  
   const saveTimerRef = useRef(null);
+
+  // Sync refs so unmount effect has latest values
+  useEffect(() => {
+    excalidrawAPIRef.current = excalidrawAPI;
+  }, [excalidrawAPI]);
+
+  useEffect(() => {
+    activeBoardIdRef.current = activeBoardId;
+  }, [activeBoardId]);
 
   useEffect(() => {
     if (boards.length > 0 && !activeBoardId) {
       setActiveBoardId(boards[0].id);
     }
-  }, [boards]);
+  }, [boards, activeBoardId]);
 
+  // Save on unmount
   useEffect(() => {
-    if (!excalidrawAPI || !activeBoardId) return;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY + activeBoardId);
-      if (saved) {
-        const { elements, appState } = JSON.parse(saved);
-        excalidrawAPI.updateScene({
-          elements: elements ?? [],
-          appState: { ...(appState ?? {}), collaborators: new Map() },
-        });
-      } else {
-        // New empty board
-        excalidrawAPI.updateScene({ elements: [] });
+    return () => {
+      const api = excalidrawAPIRef.current;
+      const boardId = activeBoardIdRef.current;
+      if (api && boardId) {
+        clearTimeout(saveTimerRef.current);
+        const elements = api.getSceneElements();
+        const appState = api.getAppState();
+        localStorage.setItem(
+          STORAGE_KEY + boardId,
+          JSON.stringify({ elements, appState })
+        );
       }
-    } catch (e) {
-      excalidrawAPI.updateScene({ elements: [] });
-    }
-  }, [activeBoardId, excalidrawAPI]);
+    };
+  }, []);
 
   const handleChange = useCallback((elements, appState) => {
     if (!activeBoardId) return;
@@ -96,6 +108,7 @@ export default function WhiteboardView() {
       );
     }
     
+    setExcalidrawAPI(null);
     setActiveBoardId(newBoardId);
   }
 
@@ -123,6 +136,20 @@ export default function WhiteboardView() {
     setBoards(updated);
     localStorage.setItem('studytracker_v1_boards', JSON.stringify(updated));
   }
+
+  const getInitialData = (boardId) => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY + boardId);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          elements: parsed.elements || [],
+          appState: { ...(parsed.appState || {}), collaborators: new Map() }
+        };
+      }
+    } catch(e) {}
+    return { elements: [] };
+  };
 
   return (
     <div className="whiteboard-view" style={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden' }}>
@@ -155,6 +182,7 @@ export default function WhiteboardView() {
       <div className="whiteboard-canvas" style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0, height: '100%' }}>
         {activeBoardId ? (
           <Excalidraw
+            initialData={getInitialData(activeBoardId)}
             excalidrawAPI={(api) => setExcalidrawAPI(api)}
             onChange={handleChange}
             theme="dark"
