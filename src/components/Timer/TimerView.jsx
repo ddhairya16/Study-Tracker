@@ -34,6 +34,8 @@ export default function TimerView() {
   const [focusPdfId, setFocusPdfId] = useState('');
   const [focusPdfDoc, setFocusPdfDoc] = useState(null);
   const [splitPercent, setSplitPercent] = useState(30);
+  const [selectedTimerMode, setSelectedTimerMode] = useState(null);
+  const [countdownMinutes, setCountdownMinutes] = useState(30);
 
   // Sync displayed mode to active timer if navigating back
   useEffect(() => {
@@ -107,18 +109,23 @@ export default function TimerView() {
     }
     setIsFocusModalOpen(false);
     setIsFocusSessionActive(true);
-    if (isRunning && mode !== MODES.POMODORO) {
+    if (isRunning && mode !== selectedTimerMode) {
       if (!window.confirm("A timer is already running. Stop it and start a new Focus Session?")) {
         return;
       }
     }
-    setDisplayedMode(MODES.POMODORO);
+    setDisplayedMode(selectedTimerMode);
+    
+    let duration = 0;
+    if (selectedTimerMode === MODES.POMODORO) duration = settings.focusDuration * 60;
+    else if (selectedTimerMode === MODES.COUNTDOWN) duration = countdownMinutes * 60;
+    
     setTimerSession({
-      mode: MODES.POMODORO,
+      mode: selectedTimerMode,
       isRunning: true,
       lastTickAt: Date.now(),
-      timeLeft: settings.focusDuration * 60,
-      totalDuration: settings.focusDuration * 60,
+      timeLeft: duration,
+      totalDuration: duration,
       sessionType: 'focus'
     });
   };
@@ -418,10 +425,68 @@ export default function TimerView() {
                   {pdfs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
+              
+              <div>
+                <label>Timer mode</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[
+                    { value: 'Pomodoro', label: '🍅 Pomodoro', desc: '25 min focus' },
+                    { value: 'Countdown', label: '⏳ Countdown', desc: 'Custom duration' },
+                    { value: 'Stopwatch', label: '⏱ Stopwatch', desc: 'Open-ended' },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSelectedTimerMode(option.value)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        borderRadius: 8,
+                        border: selectedTimerMode === option.value
+                          ? '2px solid var(--accent-vivid)'
+                          : '1px solid var(--border-subtle)',
+                        background: selectedTimerMode === option.value
+                          ? 'rgba(0,212,255,0.08)'
+                          : 'rgba(255,255,255,0.04)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 150ms',
+                      }}
+                    >
+                      <div style={{ fontSize: 16, marginBottom: 4 }}>{option.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{option.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedTimerMode === 'Countdown' && (
+                <div>
+                  <label>Duration</label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      className="form-input"
+                      min={1} max={999}
+                      value={countdownMinutes}
+                      onChange={e => setCountdownMinutes(Number(e.target.value))}
+                      style={{ width: 80 }}
+                    />
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>minutes</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="modal-footer" style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button className="btn-ghost" onClick={() => setIsFocusModalOpen(false)}>Cancel</button>
-              <button className="btn-primary" onClick={startFocusSession} disabled={!subjectId || !topicId}>Begin Session</button>
+              <button 
+                className="btn-primary" 
+                onClick={startFocusSession} 
+                disabled={!subjectId || !topicId || !selectedTimerMode}
+                style={{ opacity: (!subjectId || !topicId || !selectedTimerMode) ? 0.4 : 1 }}
+              >
+                Begin Session
+              </button>
             </div>
           </div>
         </div>

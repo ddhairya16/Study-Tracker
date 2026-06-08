@@ -196,7 +196,7 @@ export const useStore = create(
       pdfFiles: {},
       activePdfId: null,
       setActivePdfId: (id) => set({ activePdfId: id }),
-      addPdf: (pdf) => set((state) => ({ pdfs: [...state.pdfs, { fabricAnnotations: {}, ...pdf }] })),
+      addPdf: (pdf) => set((state) => ({ pdfs: [...state.pdfs, { fabricAnnotations: {}, bookmarks: [], ...pdf }] })),
       updatePdf: (id, data) => set((state) => ({
         pdfs: state.pdfs.map(p => p.id === id ? { ...p, ...data } : p)
       })),
@@ -208,6 +208,18 @@ export const useStore = create(
             [String(pageNumber)]: fabricJson
           }
         } : p)
+      })),
+      toggleBookmark: (pdfId, page, label) => set((state) => ({
+        pdfs: state.pdfs.map(p => {
+          if (p.id !== pdfId) return p;
+          const exists = (p.bookmarks || []).find(b => b.page === page);
+          return {
+            ...p,
+            bookmarks: exists
+              ? p.bookmarks.filter(b => b.page !== page)
+              : [...(p.bookmarks || []), { page, label: label || `Page ${page}`, createdAt: new Date().toISOString() }]
+          };
+        })
       })),
       deletePdf: (id) => set((state) => {
         const newFiles = { ...state.pdfFiles };

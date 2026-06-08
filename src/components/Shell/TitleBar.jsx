@@ -6,13 +6,13 @@ export default function TitleBar() {
     <div style={styles.titleBar}>
       <div style={styles.title}>StudyTracker</div>
       <div style={styles.windowControls}>
-        <button style={styles.controlBtn} className="win-btn">
+        <button style={styles.controlBtn} className="win-btn" onClick={() => window.electronAPI?.minimize()}>
           <Minus size={16} />
         </button>
-        <button style={styles.controlBtn} className="win-btn">
+        <button style={styles.controlBtn} className="win-btn" onClick={() => window.electronAPI?.maximize()}>
           <Square size={14} />
         </button>
-        <button style={{...styles.controlBtn}} className="win-btn close-btn">
+        <button style={{...styles.controlBtn}} className="win-btn close-btn" onClick={() => window.electronAPI?.close()}>
           <X size={16} />
         </button>
       </div>

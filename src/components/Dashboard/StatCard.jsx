@@ -2,6 +2,24 @@ import React from 'react';
 import AnimatedNumber from '../ui/AnimatedNumber';
 
 export default function StatCard({ title, value, icon: Icon, trend, sublabel }) {
+  const [displayed, setDisplayed] = React.useState(0);
+  
+  React.useEffect(() => {
+    let start = 0;
+    const end = parseFloat(value) || 0;
+    if (end === 0) { setDisplayed(0); return; }
+    const duration = 800;
+    const step = (end / duration) * 16;
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= end) { setDisplayed(end); clearInterval(timer); }
+      else setDisplayed(start);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [value]);
+
+  const displayValue = typeof value === 'number' ? displayed.toFixed(value % 1 !== 0 ? 1 : 0) : value;
+
   return (
     <div className="stat-card card glass">
       <div className="stat-icon-wrapper">
@@ -9,7 +27,7 @@ export default function StatCard({ title, value, icon: Icon, trend, sublabel }) 
       </div>
       <div className="stat-content">
         <div className="stat-value">
-          {typeof value === 'number' && !title.includes('Hours') ? <AnimatedNumber value={value} /> : value}
+          {displayValue}
         </div>
         <div className="stat-title">{title}</div>
         {sublabel && <div className="stat-sublabel">{sublabel}</div>}

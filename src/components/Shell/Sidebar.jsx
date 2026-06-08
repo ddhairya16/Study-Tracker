@@ -48,6 +48,7 @@ function NavItem({ icon: Icon, label, view, currentView, onClick, collapsed }) {
             width: 3,
             borderRadius: '0 3px 3px 0',
             background: 'var(--accent-vivid)',
+            boxShadow: '0 0 8px var(--accent-vivid)',
           }}
         />
       )}
@@ -214,8 +215,8 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
         
         /* Nav Item hover state */
         .nav-item:hover:not(.active) {
-          background: rgba(255,255,255,0.04) !important;
-          color: rgba(255,255,255,0.75) !important;
+          background: rgba(255,255,255,0.06) !important;
+          color: rgba(255,255,255,0.85) !important;
         }
       `}</style>
     </div>

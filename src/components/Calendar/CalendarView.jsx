@@ -8,7 +8,8 @@ import CalendarToolbar from './CalendarToolbar';
 import EventPanel from './EventPanel';
 
 export default function CalendarView() {
-  const { events, updateEvent } = useStore();
+  const { events, updateEvent, settings } = useStore();
+  const dateFormat = settings?.dateFormat || 'DD/MM/YYYY';
   const calendarRef = useRef(null);
   
   const [currentView, setCurrentView] = useState('timeGridWeek');
@@ -73,7 +74,6 @@ export default function CalendarView() {
     });
   };
 
-  // Format events for FullCalendar
   const calendarEvents = useMemo(() => events.map(e => ({
     id: e.id,
     title: e.title,
@@ -86,6 +86,27 @@ export default function CalendarView() {
       completed: e.completed
     }
   })), [events]);
+
+  const calendarFormats = useMemo(() => {
+    const isIntl = dateFormat === 'DD/MM/YYYY';
+    const isISO = dateFormat === 'YYYY-MM-DD';
+    
+    return {
+      titleFormat: isISO
+        ? { year: 'numeric', month: '2-digit', day: '2-digit' }
+        : isIntl
+          ? { day: 'numeric', month: 'long', year: 'numeric' }
+          : { month: 'long', day: 'numeric', year: 'numeric' },
+      
+      dayHeaderFormat: isIntl
+        ? { weekday: 'short', day: 'numeric', month: 'numeric' }
+        : { weekday: 'short', month: 'numeric', day: 'numeric' },
+      
+      eventTimeFormat: isIntl
+        ? { hour: '2-digit', minute: '2-digit', hour12: false }
+        : { hour: 'numeric', minute: '2-digit', hour12: true },
+    };
+  }, [dateFormat]);
 
   const renderEventContent = (eventInfo) => {
     const { event } = eventInfo;
@@ -118,6 +139,9 @@ export default function CalendarView() {
             headerToolbar={false}
             initialView={currentView}
             events={calendarEvents}
+            titleFormat={calendarFormats.titleFormat}
+            dayHeaderFormat={calendarFormats.dayHeaderFormat}
+            eventTimeFormat={calendarFormats.eventTimeFormat}
             editable={true}
             selectable={true}
             selectMirror={true}
@@ -134,7 +158,7 @@ export default function CalendarView() {
             allDaySlot={false}
             nowIndicator={true}
           />
-        ), [calendarEvents, currentView])}
+        ), [calendarEvents, currentView, calendarFormats])}
       </div>
 
       <EventPanel 

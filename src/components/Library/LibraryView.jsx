@@ -4,10 +4,12 @@ import { Plus, FileText, Trash2 } from 'lucide-react';
 import PDFViewer from './PDFViewer';
 import { saveFileHandle, getFileHandle, removeFileHandle } from '../../lib/fileHandleStore';
 import { openPdfFromFile } from '../../lib/pdfLoader';
+import { pdfjsLib } from '../../lib/pdfInit';
 
 export default function LibraryView() {
   const { pdfs, addPdf, deletePdf, updatePdf, addRecentItem, activePdfId, setActivePdfId } = useStore();
   const [activePdfUrl, setActivePdfUrl] = useState(null);
+  const [activeDoc, setActiveDoc] = useState(null);
   const [lastOpenError, setLastOpenError] = useState(null);  const handleAddPdf = async () => {
     try {
       let file;
@@ -48,6 +50,9 @@ export default function LibraryView() {
       };
       
       addPdf(newPdf);
+
+      const doc = await pdfjsLib.getDocument(objectUrl).promise;
+      setActiveDoc(doc);
       setActivePdfId(newPdf.id);
       setActivePdfUrl(objectUrl);
       
@@ -59,6 +64,8 @@ export default function LibraryView() {
 
   async function openAndLoadPdf(file, pdfId) {
     const objectUrl = URL.createObjectURL(file);
+    const doc = await pdfjsLib.getDocument(objectUrl).promise;
+    setActiveDoc(doc);
     setActivePdfUrl(objectUrl);
     
     // We get lastPage from the store
@@ -160,6 +167,7 @@ export default function LibraryView() {
     }
     setActivePdfUrl(null);
     setActivePdfId(null);
+    setActiveDoc(null);
   };
 
   const activePdfMeta = pdfs.find(p => p.id === activePdfId);
@@ -213,7 +221,7 @@ export default function LibraryView() {
       <div className="library-main glass">
         {activePdfId ? (
           <PDFViewer 
-            fileUrl={activePdfUrl} 
+            doc={activeDoc} 
             pdf={activePdfMeta}
             onRequestReopen={() => handleReOpenFile(activePdfMeta)} 
             onClose={handleClose}

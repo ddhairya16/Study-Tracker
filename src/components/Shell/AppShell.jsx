@@ -31,6 +31,7 @@ function ToastContainer() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
             className={`toast-item ${t.type}`}
+            style={{ '--toast-duration': `${t.duration || 3000}ms` }}
             onClick={() => removeToast(t.id)}
           >
             {t.message}
@@ -60,6 +61,22 @@ function ToastContainer() {
           box-shadow: 0 8px 32px rgba(0,0,0,0.3);
           backdrop-filter: blur(16px);
           cursor: pointer;
+          position: relative;
+          overflow: hidden;
+        }
+        .toast-item::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          height: 2px;
+          background: var(--accent-vivid);
+          animation: toast-progress var(--toast-duration, 3s) linear forwards;
+          width: 100%;
+        }
+        @keyframes toast-progress {
+          from { transform: scaleX(1); transform-origin: left; }
+          to { transform: scaleX(0); transform-origin: left; }
         }
         .toast-item.info { border-left: 4px solid var(--accent-vivid); }
         .toast-item.success { border-left: 4px solid #22c55e; }
