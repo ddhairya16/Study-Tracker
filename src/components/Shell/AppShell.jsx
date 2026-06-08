@@ -420,24 +420,25 @@ export default function AppShell() {
           display: flex;
           flex: 1;
           overflow: hidden;
+          min-width: 0;
+          min-height: 0;
         }
 
         .main-content {
           flex: 1;
           position: relative;
           background-color: var(--bg-base);
-          overflow-y: auto;
-          overflow-x: hidden;
+          overflow: hidden;
+          min-width: 0;
         }
 
         .view-wrapper {
           position: absolute;
           inset: 0;
-          padding: 32px;
-          height: 100%;
-          box-sizing: border-box;
           overflow-y: auto;
           overflow-x: hidden;
+          box-sizing: border-box;
+          min-width: 0;
         }
       `}</style>
     </div>

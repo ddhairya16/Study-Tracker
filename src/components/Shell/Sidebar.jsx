@@ -194,18 +194,18 @@ export default function Sidebar({ collapsed, setCollapsed, currentView, setCurre
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          padding: 0 12px;
+          gap: 2px;
+          padding: 0 8px;
           
           box-shadow: none;
           border: none;
           outline: none;
         }
         .sidebar-footer {
-          padding: 12px;
+          padding: 8px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 2px;
           border-top: var(--border-glass);
         }
         

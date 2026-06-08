@@ -39,29 +39,34 @@ export default function TitleBar() {
 
 const styles = {
   titleBar: {
-    height: '40px',
-    backgroundColor: 'var(--bg-panel)',
+    position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 0 0 16px',
+    justifyContent: 'center',
+    height: 38,
+    background: 'var(--bg-panel)',
+    borderBottom: '1px solid var(--border-subtle)',
+    flexShrink: 0,
     WebkitAppRegion: 'drag',
     userSelect: 'none',
-    position: 'relative'
   },
   title: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: 'var(--text-muted)',
     position: 'absolute',
     left: '50%',
-    transform: 'translateX(-50%)'
+    transform: 'translateX(-50%)',
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'var(--text-muted)',
+    letterSpacing: '0.02em',
+    pointerEvents: 'none',
   },
   windowControls: {
+    position: 'absolute',
+    right: 12,
     display: 'flex',
-    height: '100%',
+    alignItems: 'center',
+    gap: 8,
     WebkitAppRegion: 'no-drag',
-    marginLeft: 'auto'
   },
   controlBtn: {
     width: '46px',

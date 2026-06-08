@@ -227,8 +227,24 @@ export default function TimerView() {
   };
 
   const TimerContent = (
-    <div className={`timer-view ${sessionType !== 'focus' && displayedMode === MODES.POMODORO && isViewingActiveMode ? 'break-mode' : ''} ${isFocusSessionActive ? 'in-split' : ''}`}>
-      <div style={{ position: 'relative', display: 'inline-flex', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999, padding: 3, marginBottom: 24 }}>
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'auto',
+    }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 28,
+        padding: '32px 0',
+        width: '100%',
+        maxWidth: 520,
+      }}>
+        <div style={{ position: 'relative', display: 'inline-flex', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999, padding: 3, marginBottom: 24 }}>
         <motion.div
           layout
           layoutId="timer-mode-pill"
@@ -363,6 +379,7 @@ export default function TimerView() {
           End Focus Session
         </button>
       )}
+      </div>
     </div>
   );
 
@@ -494,14 +511,16 @@ export default function TimerView() {
 
       <style>{`
         .timer-view {
+          width: 100%;
           height: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 40px;
-          transition: background-color 1s ease;
-          padding: 24px;
+          gap: 28px;
+          padding: 32px;
+          box-sizing: border-box;
+          overflow-y: auto;
         }
         .timer-view.break-mode {
           background-color: rgba(39, 201, 63, 0.05);
